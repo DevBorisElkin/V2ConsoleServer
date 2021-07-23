@@ -6,7 +6,7 @@ namespace V2ConsoleServer
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            new ServerSimpleImplementation();
         }
     }
 }
