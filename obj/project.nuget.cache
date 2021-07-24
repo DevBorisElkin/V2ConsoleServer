@@ -1,8 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "fesJ3Xk5ZIzG1fv8DqMRhH2d0eA3IjEpt7TV8wsX0cgkcC6aYsNB7CQNdtfnGXi0k20DErXPedI318r3d/hwNQ==",
+  "dgSpecHash": "O7yLVUzRW2NBSARy24lMfjdyrSbujdPSF1/Oker5QQWR3vPugql+lQheFNs4OiZEQ6fONDaiLxeXmy/7g9jyOA==",
   "success": true,
   "projectFilePath": "C:\\BORIS\\Storage1\\BORIS' FOLDER\\programming\\C#\\AWS-test\\FlexibleClientServer\\V2ConsoleServer\\V2ConsoleServer.csproj",
-  "expectedPackageFiles": [],
+  "expectedPackageFiles": [
+    "C:\\Users\\eafor\\.nuget\\packages\\system.numerics.vectors\\4.5.0\\system.numerics.vectors.4.5.0.nupkg.sha512"
+  ],
   "logs": []
 }

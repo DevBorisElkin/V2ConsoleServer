@@ -6,7 +6,7 @@ C:\BORIS\Storage1\BORIS' FOLDER\programming\C#\AWS-test\FlexibleClientServer\V2C
 C:\BORIS\Storage1\BORIS' FOLDER\programming\C#\AWS-test\FlexibleClientServer\V2ConsoleServer\bin\Debug\netcoreapp3.1\V2ConsoleServer.pdb
 C:\BORIS\Storage1\BORIS' FOLDER\programming\C#\AWS-test\FlexibleClientServer\V2ConsoleServer\obj\Debug\netcoreapp3.1\V2ConsoleServer.AssemblyInfoInputs.cache
 C:\BORIS\Storage1\BORIS' FOLDER\programming\C#\AWS-test\FlexibleClientServer\V2ConsoleServer\obj\Debug\netcoreapp3.1\V2ConsoleServer.AssemblyInfo.cs
-C:\BORIS\Storage1\BORIS' FOLDER\programming\C#\AWS-test\FlexibleClientServer\V2ConsoleServer\obj\Debug\netcoreapp3.1\V2ConsoleServer.csproj.CoreCompileInputs.cache
 C:\BORIS\Storage1\BORIS' FOLDER\programming\C#\AWS-test\FlexibleClientServer\V2ConsoleServer\obj\Debug\netcoreapp3.1\V2ConsoleServer.dll
 C:\BORIS\Storage1\BORIS' FOLDER\programming\C#\AWS-test\FlexibleClientServer\V2ConsoleServer\obj\Debug\netcoreapp3.1\V2ConsoleServer.pdb
 C:\BORIS\Storage1\BORIS' FOLDER\programming\C#\AWS-test\FlexibleClientServer\V2ConsoleServer\obj\Debug\netcoreapp3.1\V2ConsoleServer.genruntimeconfig.cache
+C:\BORIS\Storage1\BORIS' FOLDER\programming\C#\AWS-test\FlexibleClientServer\V2ConsoleServer\obj\Debug\netcoreapp3.1\V2ConsoleServer.csprojAssemblyReference.cache
