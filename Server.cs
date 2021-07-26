@@ -32,15 +32,17 @@ namespace V2ConsoleServer
         public delegate void OnClientDisconnectedDelegate(ClientHandler client, string error);
         public event OnClientDisconnectedDelegate OnClientDisconnectedEvent;
 
-        public delegate void OnMessageReceivedDelegate(string message, ClientHandler client);
+        public delegate void OnMessageReceivedDelegate(string message, int id, string ip, MessageProtocol mp);
         public event OnMessageReceivedDelegate OnMessageReceivedEvent;
+
+        public enum MessageProtocol { TCP, UDP }
 
 
         void OnServerStarted() { OnServerStartedEvent?.Invoke(); }
         void OnServerShutDown() { OnServerShutDownEvent?.Invoke(); }
         public void OnClientConnected(ClientHandler client) { OnClientConnectedEvent?.Invoke(client); }
         public void OnClientDisconnected(ClientHandler client, string error) { OnClientDisconnectedEvent?.Invoke(client, error); }
-        public void OnMessageReceived(string message, ClientHandler client) { OnMessageReceivedEvent?.Invoke(message, client); }
+        public void OnMessageReceived(string message, int id, string ip, MessageProtocol mp) { OnMessageReceivedEvent?.Invoke(message, id, ip, mp); }
         #endregion
 
         // [START SERVER]
@@ -160,26 +162,37 @@ namespace V2ConsoleServer
         }
 
         // [SEND MESSAGE]
-        public void SendMessageToAllClients(string message)
+        public void SendMessageToAllClients(string message, MessageProtocol mp = MessageProtocol.TCP)
         {
-            for (int i = 1; i <= clients.Count; i++)
+            if (mp.Equals(MessageProtocol.TCP))
             {
-                clients[i].SendMessage(message);
+                for (int i = 1; i <= clients.Count; i++)
+                {
+                    clients[i].SendMessageTcp(message);
+                }
             }
+            else
+            {
+                for (int i = 1; i <= clients.Count; i++)
+                {
+                    UDP.SendMessageUdp(message, clients[i].udpEndPoint);
+                }
+            }
+            
         }
         public void SendMessageToClient(string message, string ip)
         {
             ClientHandler clientHandler = TryToGetClientWithIp(ip);
-            if (clientHandler != null) clientHandler.SendMessage(message);
+            if (clientHandler != null) clientHandler.SendMessageTcp(message);
         }
         public void SendMessageToClient(string message, int id)
         {
             ClientHandler clientHandler = TryToGetClientWithId(id);
-            if (clientHandler != null) clientHandler.SendMessage(message);
+            if (clientHandler != null) clientHandler.SendMessageTcp(message);
         }
         public void SendMessageToClient(string message, ClientHandler client)
         {
-            client.SendMessage(message);
+            client.SendMessageTcp(message);
         }
 
 
@@ -195,6 +208,7 @@ namespace V2ConsoleServer
     {
         Server server;
         public Socket handler;
+        public IPEndPoint udpEndPoint;
 
         public int id;
         public string ip;
@@ -225,7 +239,7 @@ namespace V2ConsoleServer
                     str = ReadLine2(handler, bytes);
                     if (!str.Equals(""))
                     {
-                        server.OnMessageReceived(str, this);
+                        server.OnMessageReceived(str, id, ip, Server.MessageProtocol.TCP);
                     }
                     else
                     {
@@ -265,11 +279,12 @@ namespace V2ConsoleServer
 
             return builder.ToString();
         }
-        public void SendMessage(string message)
+        public void SendMessageTcp(string message)
         {
             byte[] dataToSend = Encoding.Unicode.GetBytes(message);
             handler.Send(dataToSend);
         }
+
 
         public void ShutDownClient(int error = 0, bool removeFromClientsList = true)
         {
@@ -280,7 +295,7 @@ namespace V2ConsoleServer
         }
     }
 
-    public static class ClientHandlerExtensions
+    public static class ConnectionExtensions
     {
         public static bool SocketSimpleConnected(this ClientHandler ch)
         {
@@ -294,9 +309,128 @@ namespace V2ConsoleServer
             string remoteIP = rawRemoteIP.Substring(0, dotsIndex);
             return remoteIP;
         }
+        public static string GetRemoteIp(EndPoint ep)
+        {
+            string rawRemoteIP = ep.ToString();
+            int dotsIndex = rawRemoteIP.LastIndexOf(":");
+            string remoteIP = rawRemoteIP.Substring(0, dotsIndex);
+            return remoteIP;
+        }
         public static string GetRemoteIpAndPort(this ClientHandler ch)
         {
             return ch.handler.RemoteEndPoint.ToString();
+        }
+    }
+
+    //______________________________________________________________________________________________________
+
+    public static class UDP
+    {
+        public static Server server;
+        public static int portUdp;
+
+        static IPEndPoint ipEndPointUdp;
+        static Socket listenSocketUdp;
+
+        public static bool listening;
+
+        public static void StartUdpServer(int _port, Server _server)
+        {
+            portUdp = _port;
+            server = _server;
+
+            ipEndPointUdp = new IPEndPoint(IPAddress.Any, portUdp);
+            listenSocketUdp = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+
+            listening = true;
+            Task udpListenTask = new Task(ListenUDP);
+            udpListenTask.Start();
+        }
+
+        static EndPoint remote;
+        #region Listen UPD - doesn't require established connection
+        private static void ListenUDP()
+        {
+            try
+            {
+                listenSocketUdp.Bind(ipEndPointUdp);
+                byte[] data = new byte[1024];
+                remote = new IPEndPoint(IPAddress.Any, portUdp);
+
+                int bytes;
+                while (listening)
+                {
+                    StringBuilder builder = new StringBuilder();
+                    do
+                    {
+                        bytes = listenSocketUdp.ReceiveFrom(data, ref remote);
+                        builder.Append(Encoding.Unicode.GetString(data, 0, bytes));
+                    }
+                    while (listenSocketUdp.Available > 0);
+
+                    IPEndPoint remoteIp = remote as IPEndPoint;
+                    string ip = ConnectionExtensions.GetRemoteIp(remoteIp);
+                    ClientHandler clientToBind = server.TryToGetClientWithIp(ip);
+
+                    if (clientToBind == null)
+                    {
+                        Console.WriteLine($"[SYSTEM_ERROR]: didn't find client in clients list with ip {ip}");
+                        continue;
+                    }
+
+                    // on first UDP message bind IPEndPoint to selected ClientHandler
+                    if (builder.ToString().StartsWith("init_udp"))
+                    {
+                        clientToBind.udpEndPoint = remoteIp;
+                        Console.WriteLine($"[SYSTEM_MESSAGE]: initialized IPEndPoint for UDP messaging of client [{clientToBind.id}][{clientToBind.ip}]");
+                    }
+                    else
+                    {
+                        server.OnMessageReceived(builder.ToString(), clientToBind.id, clientToBind.ip, Server.MessageProtocol.UDP);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            finally
+            {
+                CloseUdp();
+            }
+        }
+        private static void CloseUdp()
+        {
+            listening = false;
+            if (listenSocketUdp != null)
+            {
+                listenSocketUdp.Shutdown(SocketShutdown.Both);
+                listenSocketUdp.Close();
+                listenSocketUdp = null;
+            }
+        }
+        #endregion
+
+        public static void SendMessageUdp(string message, IPEndPoint remoteIp)
+        {
+            if (remoteIp != null)
+            {
+                byte[] data = Encoding.Unicode.GetBytes(message);
+                listenSocketUdp.SendTo(data, remoteIp);
+            }
+            else
+            {
+                Console.WriteLine("Remote end point has not beed defined yet");
+            }
+
+        }
+
+        static void WriteAddressToConsole()
+        {
+            IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
+            IPAddress ipAddress = ipHostInfo.AddressList[1];
+            Console.WriteLine("Address = " + ipAddress);
+            Console.WriteLine("_____________________\n");
         }
     }
 }
