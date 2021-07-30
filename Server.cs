@@ -73,9 +73,18 @@ namespace V2ConsoleServer
                 while (serverActive)
                 {
                     handler = listenSocket.Accept();
-                    int clientId = GetFirstFreeId();
-                    ClientHandler client = new ClientHandler(this, handler, clientId);
-                    AddClient(client, clientId);
+                    if (!this.AlreadyHasThisClient(handler))
+                    {
+                        int clientId = GetFirstFreeId();
+                        ClientHandler client = new ClientHandler(this, handler, clientId);
+                        AddClient(client, clientId);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[SERVER_MESSAGE] reject repetetive connection from {ConnectionExtensions.GetRemoteIp(handler)}");
+                        handler.Shutdown(SocketShutdown.Both);
+                        handler.Dispose();
+                    }
                 }
             }
             catch (Exception e)
@@ -301,6 +310,10 @@ namespace V2ConsoleServer
         {
             return !((ch.handler.Poll(1000, SelectMode.SelectRead) && (ch.handler.Available == 0)) || !ch.handler.Connected);
         }
+        public static bool SocketSimpleConnected(Socket tcpHandler)
+        {
+            return !((tcpHandler.Poll(1000, SelectMode.SelectRead) && (tcpHandler.Available == 0)) || !tcpHandler.Connected);
+        }
 
         public static string GetRemoteIp(this ClientHandler ch)
         {
@@ -316,9 +329,29 @@ namespace V2ConsoleServer
             string remoteIP = rawRemoteIP.Substring(0, dotsIndex);
             return remoteIP;
         }
+
+        public static string GetRemoteIp(Socket tcpHandler)
+        {
+            string rawRemoteIP = tcpHandler.RemoteEndPoint.ToString();
+            int dotsIndex = rawRemoteIP.LastIndexOf(":");
+            string remoteIP = rawRemoteIP.Substring(0, dotsIndex);
+            return remoteIP;
+        }
+
         public static string GetRemoteIpAndPort(this ClientHandler ch)
         {
             return ch.handler.RemoteEndPoint.ToString();
+        }
+
+        public static string GetRemoteIpAndPort(Socket tcpHandler)
+        {
+            return tcpHandler.RemoteEndPoint.ToString();
+        }
+
+        public static bool AlreadyHasThisClient(this Server server, Socket socket)
+        {
+            if (server.TryToGetClientWithIp(GetRemoteIp(socket)) == null) return false;
+            return true;
         }
     }
 
