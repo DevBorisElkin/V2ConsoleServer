@@ -223,7 +223,6 @@ namespace V2ConsoleServer
         public string ip;
 
         Task taskListener;
-        bool listeningToMessages;
         public ClientHandler(Server server, Socket handler, int id)
         {
             this.server = server;
@@ -235,15 +234,14 @@ namespace V2ConsoleServer
             taskListener.Start();
         }
 
-        int errorMessages = 0;
         // [LISTEN TO MESSAGES]
         void ListenToMessages()
         {
+            int errorMessages = 0;
             byte[] bytes = new byte[1024];
             string str;
-            listeningToMessages = true;
 
-            while (listeningToMessages)
+            while (handler.Connected)
             {
                 try
                 {
@@ -252,10 +250,10 @@ namespace V2ConsoleServer
                     {
                         server.OnMessageReceived(str, id, ip, Server.MessageProtocol.TCP);
                     }
-                    else
+                    else if(str.Equals(""))
                     {
                         errorMessages++;
-                        if (errorMessages > 100)
+                        if (errorMessages > 25)
                         {
                             ShutDownClient(1);
                             break;
@@ -263,9 +261,8 @@ namespace V2ConsoleServer
                     }
                 }
                 catch (Exception e)
-                {
-                    //Console.WriteLine($"{e.Message}\n{e.StackTrace}");
-                    ShutDownClient(2);
+                {   
+                    ShutDownClient(2);  // usually never called, but for safety
                     break;
                 }
             }
@@ -282,13 +279,14 @@ namespace V2ConsoleServer
         {
             StringBuilder builder = new StringBuilder();
             int bytes = 0; // amount of received bytes
+
             do
             {
                 bytes = reciever.Receive(buffer);
                 builder.Append(Encoding.Unicode.GetString(buffer, 0, bytes));
             }
-            while (handler.Available > 0);
-
+            while (reciever.Available > 0);
+            
             return builder.ToString();
         }
         public void SendMessageTcp(string message)
@@ -297,17 +295,17 @@ namespace V2ConsoleServer
             handler.Send(dataToSend);
         }
 
-        bool oneTimeShutDown = true;
         public void ShutDownClient(int error = 0, bool removeFromClientsList = true)
         {
-            if (!oneTimeShutDown) return;
-            oneTimeShutDown = false;
-
-            listeningToMessages = false;
             server.OnClientDisconnected(this, error.ToString());
-            handler.Dispose();
+
+            if(handler.Connected)
+            {
+                handler.Shutdown(SocketShutdown.Both);
+                handler.Dispose();
+            }
+
             if(removeFromClientsList) server.clients.Remove(this.id);
-            taskListener.Dispose();
         }
     }
 
