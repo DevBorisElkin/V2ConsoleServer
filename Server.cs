@@ -223,6 +223,7 @@ namespace V2ConsoleServer
         public string ip;
 
         Task taskListener;
+        bool listeningToMessages;
         public ClientHandler(Server server, Socket handler, int id)
         {
             this.server = server;
@@ -240,8 +241,9 @@ namespace V2ConsoleServer
         {
             byte[] bytes = new byte[1024];
             string str;
+            listeningToMessages = true;
 
-            while (true)
+            while (listeningToMessages)
             {
                 try
                 {
@@ -262,6 +264,7 @@ namespace V2ConsoleServer
                 }
                 catch (Exception e)
                 {
+                    //Console.WriteLine($"{e.Message}\n{e.StackTrace}");
                     ShutDownClient(2);
                     break;
                 }
@@ -294,9 +297,13 @@ namespace V2ConsoleServer
             handler.Send(dataToSend);
         }
 
-
+        bool oneTimeShutDown = true;
         public void ShutDownClient(int error = 0, bool removeFromClientsList = true)
         {
+            if (!oneTimeShutDown) return;
+            oneTimeShutDown = false;
+
+            listeningToMessages = false;
             server.OnClientDisconnected(this, error.ToString());
             handler.Dispose();
             if(removeFromClientsList) server.clients.Remove(this.id);
